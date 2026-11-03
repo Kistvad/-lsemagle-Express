@@ -17,7 +17,6 @@ export default function App() {
   const currentOrigin = direction === 'KOGE_TO_CPH' ? STATIONS.KOGE_NORD : STATIONS.COPENHAGEN;
   const currentDest = direction === 'KOGE_TO_CPH' ? STATIONS.COPENHAGEN : STATIONS.KOGE_NORD;
 
-  // Track scroll position for Top button
   useEffect(() => {
     const handleScroll = () => {
       setShowTopBtn(window.scrollY > 200);
@@ -26,23 +25,29 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch live departures from Rejseplanen API
   const fetchDepartures = async () => {
     setLoading(true);
     setError(null);
 
     try {
       const targetUrl = `https://xmlopen.rejseplanen.dk/bin/rest.exe/departureBoard?id=${currentOrigin.id}&format=json`;
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-
-      const res = await fetch(proxyUrl);
+      
+      // Vi bruger corsproxy.io som er væsentligt mere stabil og hurtig
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+      
       if (!res.ok) throw new Error('Kunne ikke hente data fra Rejseplanen');
       
-      const data = await res.json();
+      const textData = await res.text();
+      let data;
+      try {
+        data = JSON.parse(textData);
+      } catch (e) {
+        throw new Error('Modtog ugyldigt svar fra API-proxyen.');
+      }
+
       const rawBoard = data?.DepartureBoard?.Departure || [];
       const list = Array.isArray(rawBoard) ? rawBoard : [rawBoard];
 
-      // Filter for trains heading towards the selected destination
       const filtered = list.filter((item) => {
         if (!item || !item.name) return false;
 
@@ -196,55 +201,4 @@ export default function App() {
                     S
                   </div>
                 ) : item.type === 'RE' ? (
-                  <div className="w-9 h-9 bg-[#00828A] rounded flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-inner">
-                    RE
-                  </div>
-                ) : item.type === 'IC' ? (
-                  <div className="w-9 h-9 bg-[#8A1820] rounded flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-inner">
-                    IC
-                  </div>
-                ) : (
-                  <div className="w-9 h-9 bg-[#D32F2F] rounded flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-inner">
-                    ICL
-                  </div>
-                )}
-
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-base">{item.lineName}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 font-medium">
-                      Spor {item.track}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-0.5">Mod {item.finalDestination}</p>
-                </div>
-              </div>
-
-              <div className="text-right">
-                {item.delay ? (
-                  <div>
-                    <span className="text-xs line-through text-slate-500 block">{item.time}</span>
-                    <span className="text-lg font-bold text-red-400">{item.rtTime}</span>
-                  </div>
-                ) : (
-                  <span className="text-lg font-bold text-slate-100">{item.time}</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </main>
-
-      {/* Sticky Top Scroll Button */}
-      {showTopBtn && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 rounded-full bg-red-600 hover:bg-red-500 text-white shadow-lg transition-all duration-200 z-30"
-          title="Gå til toppen"
-        >
-          <ArrowUp className="w-5 h-5" />
-        </button>
-      )}
-    </div>
-  );
-}
+                  <div className="w-9 h-9 bg
